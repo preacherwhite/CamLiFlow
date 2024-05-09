@@ -22,14 +22,16 @@ import os, sys, glob, argparse, cv2
 import numpy as np
 import multiprocessing as mp
 sys.path.insert(0, './')
-import setup_utils.data_utils as data_utils
+sys.path.append('..')
+from setup_utils import data_utils
+
 
 
 '''
 Paths for KITTI dataset
 '''
-KITTI_RAW_DATA_DIRPATH = os.path.join('data', 'kitti_raw_data')
-KITTI_DEPTH_COMPLETION_DIRPATH = os.path.join('data', 'kitti_depth_completion')
+KITTI_RAW_DATA_DIRPATH = '/media/staging1/dhwang/kitti_raw_data'
+KITTI_DEPTH_COMPLETION_DIRPATH = '/media/staging1/dhwang/kitti_depth_completion'
 
 KITTI_TRAINVAL_SPARSE_DEPTH_DIRPATH = os.path.join(
     KITTI_DEPTH_COMPLETION_DIRPATH, 'train_val_split', 'sparse_depth')
@@ -41,7 +43,7 @@ KITTI_TESTING_DIRPATH = os.path.join(
     KITTI_DEPTH_COMPLETION_DIRPATH, 'testing')
 KITTI_CALIBRATION_FILENAME = 'calib_cam_to_cam.txt'
 
-KITTI_STATIC_FRAMES_FILEPATH = os.path.join('setup', 'kitti', 'kitti_static_frames.txt')
+KITTI_STATIC_FRAMES_FILEPATH = os.path.join('kitti_static_frames.txt')
 KITTI_STATIC_FRAMES_PATHS = data_utils.read_paths(KITTI_STATIC_FRAMES_FILEPATH)
 
 # To be concatenated to sequence path
@@ -52,14 +54,14 @@ KITTI_TRAINVAL_GROUND_TRUTH_REFPATH = os.path.join('proj_depth', 'groundtruth')
 '''
 Output paths
 '''
-KITTI_DEPTH_COMPLETION_DERIVED_DIRPATH = os.path.join(
-    'data', 'kitti_depth_completion_derived')
+KITTI_DEPTH_COMPLETION_DERIVED_DIRPATH ='/media/staging1/dhwang/kitti_depth_completion_derived'
+KITTI_OUT_PATH ='/media/staging1/dhwang/kitti_processed'
 
-TRAIN_SUPERVISED_REF_DIRPATH = os.path.join('training', 'kitti', 'supervised')
-TRAIN_UNSUPERVISED_REF_DIRPATH = os.path.join('training', 'kitti', 'unsupervised')
-TRAIN_UNUSED_REF_DIRPATH = os.path.join('training', 'kitti', 'unused')
-VAL_REF_DIRPATH = os.path.join('validation', 'kitti')
-TEST_REF_DIRPATH = os.path.join('testing', 'kitti')
+TRAIN_SUPERVISED_REF_DIRPATH = os.path.join(KITTI_OUT_PATH,'training', 'kitti', 'supervised')
+TRAIN_UNSUPERVISED_REF_DIRPATH = os.path.join(KITTI_OUT_PATH,'training', 'kitti', 'unsupervised')
+TRAIN_UNUSED_REF_DIRPATH = os.path.join(KITTI_OUT_PATH,'training', 'kitti', 'unused')
+VAL_REF_DIRPATH = os.path.join(KITTI_OUT_PATH,'validation', 'kitti')
+TEST_REF_DIRPATH = os.path.join(KITTI_OUT_PATH,'testing', 'kitti')
 
 # Paths to files for supervised training
 TRAIN_SUPERVISED_IMAGE_FILEPATH = os.path.join(
@@ -242,7 +244,6 @@ def map_intrinsics_and_focal_length_baseline(paths_only=False):
     # Build a mapping between the camera intrinsics to the directories
     intrinsics_files = sorted(glob.glob(
         os.path.join(KITTI_RAW_DATA_DIRPATH, '*', KITTI_CALIBRATION_FILENAME)))
-
     intrinsics_dkeys = {}
     focal_length_baseline_dkeys = {}
     for intrinsics_file in intrinsics_files:
@@ -270,7 +271,6 @@ def map_intrinsics_and_focal_length_baseline(paths_only=False):
             os.makedirs(sequence_dirpath)
 
         calibration = data_utils.load_calibration(intrinsics_file)
-
         # Obtain calibration for camera 0 and camera 1
         camera_left = np.reshape(np.asarray(calibration['P_rect_02'], np.float32), [3, 4])
         camera_right = np.reshape(np.asarray(calibration['P_rect_03'], np.float32), [3, 4])
@@ -315,7 +315,8 @@ def map_intrinsics_and_focal_length_baseline(paths_only=False):
             np.save(intrinsics_right_path, intrinsics_right)
 
         # Add as keys to instrinsics and focal length baseline dictionaries
-        sequence_date = intrinsics_file.split(os.sep)[2]
+        # the reveresed 2nd folder name in the directory hierarchy to prevent absolute path issues
+        sequence_date = intrinsics_file.split(os.sep)[-2]
 
         focal_length_baseline_dkeys[(sequence_date, 'image_02')] = focal_length_baseline_left_path
         focal_length_baseline_dkeys[(sequence_date, 'image_03')] = focal_length_baseline_right_path
@@ -628,14 +629,12 @@ def setup_dataset_kitti_training(paths_only=False, n_thread=8):
 
         sparse_depth_sequence_dirpath = sorted(glob.glob(
             os.path.join(KITTI_TRAINVAL_SPARSE_DEPTH_DIRPATH, refdir, '*/')))
-
         # Iterate through sequences
         for sequence_dirpath in sparse_depth_sequence_dirpath:
-
+            
             # Fetch sparse depth paths
             sparse_depth_left_paths = sorted(glob.glob(
                 os.path.join(sequence_dirpath, KITTI_TRAINVAL_SPARSE_DEPTH_REFPATH, 'image_02', '*.png')))
-
             sparse_depth_right_paths = sorted(glob.glob(
                 os.path.join(sequence_dirpath, KITTI_TRAINVAL_SPARSE_DEPTH_REFPATH, 'image_03', '*.png')))
 
@@ -649,8 +648,9 @@ def setup_dataset_kitti_training(paths_only=False, n_thread=8):
             ground_truth_right_paths = sorted(glob.glob(
                 os.path.join(ground_truth_sequence_dirpath, KITTI_TRAINVAL_GROUND_TRUTH_REFPATH, 'image_03', '*.png')))
 
-            # Fetch image paths
-            sequence = sparse_depth_left_paths[0].split(os.sep)[5]
+            # Fetch image paths, takes the reverse 5th folder name in the directory hierarchy
+            # so it is invariant to absolute path
+            sequence = sparse_depth_left_paths[0].split(os.sep)[-5]
             sequence_date = sequence[0:10]
 
             image_left_all_paths = sorted(glob.glob(

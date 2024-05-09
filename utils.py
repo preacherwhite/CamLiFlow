@@ -338,6 +338,72 @@ def disp2pc(disp, baseline, f, cx, cy, flow=None):
 
     return pc
 
+def depth2pc(depth, f, cx, cy):
+    h, w = depth.shape
+    xx, yy = np.meshgrid(np.arange(w), np.arange(h))
+    
+    # Filter out points with zero depth
+    valid_mask = (depth > 0)
+    xx = xx[valid_mask].astype(np.float32)  # Ensure xx is float
+    yy = yy[valid_mask].astype(np.float32)  # Ensure yy is float
+    depth = depth[valid_mask].astype(np.float32)  # Ensure depth is float
+    
+    # Convert pixel coordinates to camera coordinates
+    x = (xx - cx) * depth / f
+    y = (yy - cy) * depth / f
+    
+    # Create point cloud
+    pc = np.stack([x, y, depth], axis=-1)
+    
+    return pc
+
+def pc2depth(pc, f, cx, cy):
+    # Create a depth map of shape H*W filled with zeros
+    H = 376
+    W = 1242
+    depth_map = np.zeros((H, W), dtype=np.float32)
+    
+    # Project point cloud back to depth map
+    x = np.round((pc[:, 0] * f / pc[:, 2]) + cx).astype(int)
+    y = np.round((pc[:, 1] * f / pc[:, 2]) + cy).astype(int)
+    z = pc[:, 2]
+    
+    # Filter out points that fall outside the depth map boundaries
+    valid_mask = (x >= 0) & (x < W) & (y >= 0) & (y < H)
+    x = x[valid_mask]
+    y = y[valid_mask]
+    z = z[valid_mask]
+    
+    # Assign depth values to the corresponding pixels in the depth map
+    depth_map[y, x] = z
+    
+    return depth_map
+
+def disp2depth(disp, f, cx, cy, baseline):
+    # Get the height and width of the disparity map
+    H, W = disp.shape
+    
+    # Convert disparity map to point cloud using disp2pc
+    pc = disp2pc(disp, baseline, f, cx, cy)
+    
+    # Create a depth map of shape H*W filled with zeros
+    depth_map = np.zeros((H, W), dtype=np.float32)
+    
+    # Project point cloud back to depth map
+    x = np.round((pc[:, 0] * f / pc[:, 2]) + cx).astype(int)
+    y = np.round((pc[:, 1] * f / pc[:, 2]) + cy).astype(int)
+    z = pc[:, 2]
+    
+    # Filter out points that fall outside the depth map boundaries
+    valid_mask = (x >= 0) & (x < W) & (y >= 0) & (y < H)
+    x = x[valid_mask]
+    y = y[valid_mask]
+    z = z[valid_mask]
+    
+    # Assign depth values to the corresponding pixels in the depth map
+    depth_map[y, x] = z
+    
+    return depth_map
 
 def project_pc2image(pc, image_h, image_w, f, cx=None, cy=None, clip=True):
     pc_x, pc_y, depth = pc[..., 0], pc[..., 1], pc[..., 2]

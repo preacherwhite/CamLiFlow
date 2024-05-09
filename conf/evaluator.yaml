@@ -9,3 +9,8 @@ ckpt:
   strict: true
 
 save_results: false
+
+save_outputs: ???
+
+out_dir: ???
+

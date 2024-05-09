@@ -25,9 +25,9 @@ class Encoder2D(ResNet):
         self.align = Conv2dNormRelu(self.feat_dim, 128)
 
         # MMCV, please shut up
-        from mmcv.utils.logging import get_logger
-        get_logger('root').setLevel(logging.ERROR)
-        get_logger('mmcv').setLevel(logging.ERROR)
+        # from mmcv.utils.logging import get_logger
+        # get_logger('root').setLevel(logging.ERROR)
+        # get_logger('mmcv').setLevel(logging.ERROR)
 
         self.init_weights()
     

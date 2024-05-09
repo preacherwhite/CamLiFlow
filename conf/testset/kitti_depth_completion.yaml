@@ -1,0 +1,25 @@
+# @package _global_
+testset:
+  name: kitti_depth_completion
+  root_dir: /media/staging1/dhwang/kitti_nlspn
+  split: training
+  n_workers: 8
+
+  disp_provider: ganet
+  max_depth: 90
+  n_points: 8192
+
+  zero_padding:
+    enabled: true
+    target_h: 376
+    target_w: 1242
+
+  augmentation:
+    enabled: false
+  
+  split_json: data_json/kitti_dc.json
+  mode: train
+  dir_data: /media/staging1/dhwang/kitti_nlspn/
+  max_iterations: 5
+  frame_gap: 5
+  debug: true
